@@ -61,6 +61,12 @@ namespace HarfBuzzFix
             }
         }
 
+        public override void Dispose()
+        {
+            _harmony?.UnpatchAll(_harmony.Id);
+            base.Dispose();
+        }
+
         // Runs instead of Gui.NativeLibraryLoader.Register(). Returning false skips
         // the original (unsafe) method body entirely - gui's own registration never runs.
         public static bool RegisterPrefix()
@@ -100,33 +106,37 @@ namespace HarfBuzzFix
                 throw new InvalidOperationException("Could not locate HarfBuzzSharp's native library directory.");
             }
 
-            NativeLibrary.SetDllImportResolver(harfBuzzSharp, (name, asm, searchPath) =>
-            {
-                string fileName = (name.StartsWith("lib", StringComparison.Ordinal) ? "" : "lib") + name + ".so";
-                string fullPath = Path.Combine(nativeDir, fileName);
-
-                if (File.Exists(fullPath))
-                {
-                    try
-                    {
-                        IntPtr handle = dlopen(fullPath, RTLD_NOW | RTLD_DEEPBIND);
-                        if (handle != IntPtr.Zero)
-                        {
-                            return handle;
-                        }
-                    }
-                    catch
-                    {
-                        // fall through
-                    }
-                }
-
-                // Same fallback gui's own loader used: default system-wide resolution.
-                NativeLibrary.TryLoad(name, out IntPtr fallbackHandle);
-                return fallbackHandle;
-            });
+            NativeLibrary.SetDllImportResolver(harfBuzzSharp, (name, asm, searchPath) => ResolveNativeLibrary(name, nativeDir));
 
             _isolatedRegistered = true;
+        }
+
+        // Loads the requested native library with RTLD_DEEPBIND isolation if it lives in
+        // HarfBuzzSharp's own native directory, otherwise falls back to default resolution -
+        // the same fallback gui's own (unisolated) loader used.
+        private static IntPtr ResolveNativeLibrary(string name, string nativeDir)
+        {
+            string fileName = (name.StartsWith("lib", StringComparison.Ordinal) ? "" : "lib") + name + ".so";
+            string fullPath = Path.Combine(nativeDir, fileName);
+
+            if (File.Exists(fullPath))
+            {
+                try
+                {
+                    IntPtr handle = dlopen(fullPath, RTLD_NOW | RTLD_DEEPBIND);
+                    if (handle != IntPtr.Zero)
+                    {
+                        return handle;
+                    }
+                }
+                catch
+                {
+                    // fall through
+                }
+            }
+
+            NativeLibrary.TryLoad(name, out IntPtr fallbackHandle);
+            return fallbackHandle;
         }
 
         private static string FindNativeDir(Assembly asm)
@@ -174,11 +184,5 @@ namespace HarfBuzzFix
 
         [DllImport("libdl.so.2", SetLastError = true)]
         private static extern IntPtr dlopen(string filename, int flags);
-
-        public override void Dispose()
-        {
-            _harmony?.UnpatchAll(_harmony.Id);
-            base.Dispose();
-        }
     }
 }
