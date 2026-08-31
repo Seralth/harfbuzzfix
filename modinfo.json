@@ -1,0 +1,15 @@
+{
+  "type": "code",
+  "modid": "harfbuzzfix",
+  "name": "HarfBuzzFix",
+  "authors": ["Seralth"],
+  "description": "Linux-only: patches gui's own NativeLibraryLoader.Register() (via Harmony) to load the bundled HarfBuzzSharp native library with RTLD_DEEPBIND isolation instead of gui's default loader, preventing symbol interposition against an already-loaded system libharfbuzz (which otherwise corrupts the heap and aborts on hb_font_create). No-op if gui isn't installed or on non-Linux systems.",
+  "version": "1.1.0",
+  "dependencies": {
+    "game": "1.22.0",
+    "gui": "*"
+  },
+  "requiredOnClient": false,
+  "requiredOnServer": false,
+  "side": "Client"
+}
