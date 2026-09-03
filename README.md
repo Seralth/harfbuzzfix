@@ -47,3 +47,7 @@ Story install (see `HarfBuzzFix.csproj` for paths — adjust to your install loc
 ```
 dotnet build -c Release
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
